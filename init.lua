@@ -1,3 +1,4 @@
+local modpath = core.get_modpath(core.get_current_modname())
 -- chatcommands
 core.register_chatcommand("sonic", {
                              func = function(name, param)
@@ -34,7 +35,8 @@ local function program_node_formspec(code,is_error)
       "button_exit[21.5,0.5;3,1;exit;Schließen]" ..
       "style[save;textcolor=green]" ..
       "button[21.5,22;3,2;save;Speichern]" ..
-      "textarea[1,2;20,20;code;hier:;".. code .."]" ..
+      "textarea[1,2;20,20;code;hier:;"..
+      core.formspec_escape(code) .."]" ..
       "button[1,22;20,2;enter;Ausführen!]"
    return formspec
 end
@@ -61,44 +63,15 @@ function fshard_prelude(player)
 end
 
 -- convenience functions for program_node
-local nodetable = {
-   luft = "air",
-   stein = "mcl_core:stone",
-   erde = "mcl_core:dirt",
-   kies = "mcl_core:gravel",
-   sand = "mcl_core:sand",
-   eisen = "mcl_core:ironblock",
-   gold = "mcl_core:goldblock",
-   diamant = "mcl_core:diamondblock",
-   glas = "mcl_core:glass",
-   weiß = "mcl_wool:white",
-   hellgrau = "mcl_wool:silver",
-   grau = "mcl_wool:gray",
-   schwarz = "mcl_wool:black",
-   lila = "mcl_wool:purple",
-   blau = "mcl_wool:blue",
-   hellblau = "mcl_wool:light_blue",
-   cyan = "mcl_wool:cyan",
-   gruen = "mcl_wool:green",
-   gelbgruen = "mcl_wool:lime",
-   gelb = "mcl_wool:yellow",
-   braun = "mcl_wool:brown",
-   orange = "mcl_wool:orange",
-   rot = "mcl_wool:red",
-   magenta = "mcl_wool:magenta",
-   pink = "mcl_wool:pink"
-}
-
-local function baue(pos, name)
-   core.set_node(pos, {name = name})
-end
+convenience = dofile(modpath.."/convenience.lua") -- load convenience bindings
+raetsel = dofile(modpath.."/raetsel.lua") -- load riddles
 
 local static_prelude = "local nv = vector.new(0,0,0)\n" ..
    "local x = vector.new(1,0,0)\n" ..
    "local y = vector.new(0,1,0)\n" ..
    "local z = vector.new(0,0,1)\n"
 
-for k,v in pairs(nodetable) do
+for k,v in pairs(convenience.nodetable) do
    static_prelude = static_prelude ..
       "local " .. k .. " = \"" .. v .. "\"\n"
 end
@@ -148,8 +121,11 @@ core.register_node("astridmod:program_node", {
                             end
                             local ptable = { pos = pos,
                                              player = player,
-                                             baue = baue,
+                                             baue = convenience.baue,
+                                             entferne = convenience.entferne,
+                                             schreibe = convenience.entferne,
                                              rbaue = rbaue,
+                                             raetsel = raetsel,
                                              direction=node.param2}
 
                             local prelude = static_prelude ..
@@ -216,7 +192,8 @@ local function use_function_shard(itemstack, user, pointed_thing)
       "label[1,1;Bitte Code eingeben!]" ..
       "button_exit[21.5,0.5;3,1;exit;Schließen]" ..
       "style[enter;textcolor=green]" ..
-      "textarea[1,2;20,20;code;hier:;" .. text .. "]" ..
+      "textarea[1,2;20,20;code;hier:;" ..
+      core.formspec_escape(text) .. "]" ..
       "button[1,22;20,2;enter;Speichern!]"
    core.show_formspec(user:get_player_name(), "function_shard_entry", formspec)
 end
@@ -239,5 +216,47 @@ core.register_on_player_receive_fields(function(player, formname, fields)
                player:set_wielded_item(stack)
             end
          end
+      end
+end)
+
+core.register_privilege("abbauen", {
+                           description = "Spieler darf abbauen",
+                           give_to_singleplayer = false,
+                           give_to_admin = false
+})
+
+core.register_privilege("setzen", {
+                           description = "Spieler darf Blöcke setzen",
+                           give_to_singleplayer = false,
+                           give_to_admin = false
+})
+
+-- Abbauen global verhindern (für alle Blöcke, wenn verboten)
+core.register_on_dignode(function(pos, oldnode, digger)
+      if digger:is_player() then
+         local has_bypass = core.check_player_privs(digger, "protection_bypass")
+         local has_dig_privilege = core.check_player_privs(digger, "abbauen")
+         if not (has_bypass or has_dig_privilege) then
+            minetest.set_node(pos, oldnode)
+            minetest.chat_send_player(digger:get_player_name(),
+                                      "Du darfst gerade nichts abbauen!")
+         end
+      end
+end)
+
+-- Setzen von Blöcken verhindern (für alle Blöcke, wenn verboten)
+core.register_on_placenode(function(pos, newnode, placer, oldnode, itemstack, pointed_thing)
+      if placer:is_player() then
+         local has_bypass = core.check_player_privs(placer, "protection_bypass")
+         local has_place_privilege = core.check_player_privs(placer, "setzen")
+         if not (has_bypass or has_place_privilege) then
+            -- Ausnahme für programmierbaren Block
+            if newnode.name == "astridmod:program_node" then
+               return
+            end
+            core.remove_node(pos)
+            core.chat_send_player(placer:get_player_name(), "Du darfst gerade nichts setzen!")
+         end
+         return true -- blockiert das Setzen
       end
 end)
