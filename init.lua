@@ -111,6 +111,19 @@ core.register_node("astridmod:program_node", {
                       },
                       groups = {cracky = 3},
                       diggable = false,
+                      paramtype2 = "4dir",
+                      on_place = function(itemstack, placer, pointed_thing)
+                         local p1 = pointed_thing.above
+                         local param2 = 0
+
+                         if placer then
+                            local placer_pos = placer:get_pos()
+                            if placer_pos then
+                               param2 = core.dir_to_facedir(vector.subtract(p1, placer_pos))
+                            end
+                         end
+                         return core.item_place_node(itemstack, placer, pointed_thing, param2)
+                      end,
                       after_place_node = function(pos, placer, itemstack, pointed_thing)
                          if placer and placer:is_player() then
                             local meta = core.get_meta(pos)
@@ -126,7 +139,17 @@ core.register_node("astridmod:program_node", {
                          end
                          if fields.enter then
                             local meta = core.get_meta(pos)
-                            local ptable = { pos = pos, player = player, baue = baue }
+                            local node = core.get_node(pos)
+                            local y = vector.new(0,1,0)
+                            local function rbaue(offset, name)
+                               local roffset = offset:rotate_around_axis(-y,node.param2*math.pi/2)
+                               core.set_node(pos+roffset, {name = name})
+                            end
+                            local ptable = { pos = pos,
+                                             player = player,
+                                             baue = baue,
+                                             rbaue = rbaue,
+                                             direction=node.param2}
 
                             local prelude = static_prelude ..
                                "local ptable = ...\n"
