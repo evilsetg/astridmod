@@ -93,7 +93,8 @@ local function baue(pos, name)
    core.set_node(pos, {name = name})
 end
 
-local static_prelude = "local x = vector.new(1,0,0)\n" ..
+local static_prelude = "local nv = vector.new(0,0,0)\n" ..
+   "local x = vector.new(1,0,0)\n" ..
    "local y = vector.new(0,1,0)\n" ..
    "local z = vector.new(0,0,1)\n"
 
