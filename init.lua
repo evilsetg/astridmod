@@ -233,6 +233,7 @@ core.register_privilege("setzen", {
 
 -- Abbauen global verhindern (für alle Blöcke, wenn verboten)
 core.register_on_dignode(function(pos, oldnode, digger)
+      if not digger then return end
       if digger:is_player() then
          local has_bypass = core.check_player_privs(digger, "protection_bypass")
          local has_dig_privilege = core.check_player_privs(digger, "abbauen")
@@ -246,6 +247,7 @@ end)
 
 -- Setzen von Blöcken verhindern (für alle Blöcke, wenn verboten)
 core.register_on_placenode(function(pos, newnode, placer, oldnode, itemstack, pointed_thing)
+      if not placer then return end
       if placer:is_player() then
          local has_bypass = core.check_player_privs(placer, "protection_bypass")
          local has_place_privilege = core.check_player_privs(placer, "setzen")
