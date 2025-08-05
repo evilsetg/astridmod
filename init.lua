@@ -119,6 +119,19 @@ core.register_node("astridmod:program_node", {
                                local roffset = offset:rotate_around_axis(-y,node.param2*math.pi/2)
                                core.set_node(pos+roffset, {name = name})
                             end
+
+                            local function wasistda(offset)
+                               local roffset = offset:rotate_around_axis(-y,node.param2*math.pi/2)
+                               local dasistda = core.get_node_or_nil(pos+roffset)
+                               return dasistda.name
+                            end
+
+                            local function twasistda(offset)
+                               local roffset = offset:rotate_around_axis(-y,node.param2*math.pi/2)
+                               local dasistda = core.get_node_or_nil(pos+roffset)
+ core.chat_send_player(player:get_player_name(),dasistda.name)
+                            end
+
                             local ptable = { pos = pos,
                                              player = player,
                                              baue = convenience.baue,
@@ -126,7 +139,10 @@ core.register_node("astridmod:program_node", {
                                              schreibe = convenience.entferne,
                                              rbaue = rbaue,
                                              raetsel = raetsel,
-                                             direction=node.param2}
+                                             direction=node.param2,
+                                             wasistda = wasistda,
+                                             twasistda = twasistda
+                                             }
 
                             local prelude = static_prelude ..
                                "local ptable = ...\n"
@@ -200,7 +216,7 @@ end
 
 core.register_craftitem("astridmod:function_shard", {
                            description = "Funktionsscherbe",
-                           inventory_image = "astridmod_function_shard.png",
+                           inventory_image = "astridmod_floppy.png",
                            stack_max = 1,
                            on_secondary_use = use_function_shard,
                            on_place = use_function_shard
@@ -262,3 +278,6 @@ core.register_on_placenode(function(pos, newnode, placer, oldnode, itemstack, po
          return true -- blockiert das Setzen
       end
 end)
+
+-- freeze time
+core.setting_set("time_speed",0)
