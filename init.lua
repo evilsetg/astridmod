@@ -132,16 +132,29 @@ core.register_node("astridmod:program_node", {
  core.chat_send_player(player:get_player_name(),dasistda.name)
                             end
 
+                            function istdasda(offset, name)
+                              local roffset = offset:rotate_around_axis(-y,node.param2*math.pi/2)
+                              local  test_node = core.get_node(pos+roffset)
+                              if (test_node.name == name) then
+                                rbaue(y,gruen)
+                              else
+                                rbaue(y,rot)
+                              end
+                            end
+
                             local ptable = { pos = pos,
                                              player = player,
                                              baue = convenience.baue,
                                              entferne = convenience.entferne,
                                              schreibe = convenience.entferne,
+                                             block = convenience.block,
+                                             rotiere = convenience.rotiere,
                                              rbaue = rbaue,
                                              raetsel = raetsel,
                                              direction=node.param2,
                                              wasistda = wasistda,
-                                             twasistda = twasistda
+                                             twasistda = twasistda,
+                                             istdasda = istdasda
                                              }
 
                             local prelude = static_prelude ..

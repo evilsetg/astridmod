@@ -49,6 +49,21 @@ convenience.nodetable = {
    pink = "mcl_wool:pink"
 }
 
+convenience.block = function(offset, width, height, depth, material)
+    for i in 0,width do
+        for j in 0,height do
+            for k in 0,depth do
+                rbaue(offset+i*x+j*y+k*z)
+            end
+        end
+    end
+end
+
+convenience.rotiere = function(vector, drehung)
+    local y = vector.new(0,1,0)
+    return vector:rotate_around_axis(y, drehung * math.pi / 2)
+end
+
 convenience.baue =  function(pos, name)
    core.set_node(pos, {name = name})
 end
