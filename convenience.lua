@@ -76,4 +76,14 @@ convenience.schreibe = function(text)
    core.chat_send_all(text)
 end
 
+convenience.wasistda = function(pos)
+   local dasistda = core.get_node_or_nil(pos)
+   return dasistda.name
+end
+
+convenience.twasistda = function(pos)
+   local dasistda = core.get_node_or_nil(pos)
+   core.chat_send_player(player:get_player_name(),dasistda.name)
+end
+
 return convenience
