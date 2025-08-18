@@ -23,20 +23,42 @@ core.register_chatcommand("unsonic", {
 -- nodes
 
 -- formspec for program_node
-local function program_node_formspec(code,is_error)
+local function style_errline(code, errline)
+   if errline == nil then
+      return code
+   end
+   local errstring = "ERROR -> "
+   local last_offset = 0
+   local offset = 0
+   local lcounter = 1
+   while lcounter <= errline do
+      last_offset = offset
+      offset,offset = code:find("\n", offset+1)
+      offset = offset or code:len()
+      lcounter = lcounter + 1
+   end
+   return code:sub(1,last_offset) ..
+      (code:sub(last_offset+1, last_offset+errstring:len()) == errstring and
+       "" or
+       errstring)  ..
+            code:sub(last_offset+1,code:len())
+end
+
+local function program_node_formspec(code, is_error, errline)
    local code = code or ""
    local is_error = (is_error == "true")
    local formspec = "formspec_version[4]" ..
       "size[25,25]" ..
       "label[1,1;Bitte Code eingeben!]" ..
-      "style_type[label;textcolor=red]" ..
+      "style_type[label;textcolor=white]" ..
+      (is_error and "box[15.9,0.5;2.3,1;#900000B0]" or "") ..
       (is_error and "label[16,1;FEHLER!]" or "") ..
       "style_type[label;textcolor=]" ..
       "button_exit[21.5,0.5;3,1;exit;Schließen]" ..
-      "style[save;textcolor=green]" ..
+      "style[save;bgcolor=green]" ..
       "button[21.5,22;3,2;save;Speichern]" ..
       "textarea[1,2;20,20;code;hier:;"..
-      core.formspec_escape(code) .."]" ..
+      style_errline(core.formspec_escape(code), errline) .."]" ..
       "button[1,22;20,2;enter;Ausführen!]"
    return formspec
 end
@@ -105,7 +127,7 @@ core.register_node("astridmod:program_node", {
                          end
                          local meta = core.get_meta(pos)
                          meta:set_string("error", "false")
-                         meta:set_string("formspec", program_node_formspec("", "false"))
+                         meta:set_string("formspec", program_node_formspec("", "false", nil))
                       end,
                       on_receive_fields = function(pos, formname, fields, player)
                          if fields.quit then
@@ -132,7 +154,7 @@ core.register_node("astridmod:program_node", {
  core.chat_send_player(player:get_player_name(),dasistda.name)
                             end
 
-                            function istdasda(offset, name)
+                            local function istdasda(offset, name)
                               local roffset = offset:rotate_around_axis(-y,node.param2*math.pi/2)
                               local  test_node = core.get_node(pos+roffset)
                               if (test_node.name == name) then
@@ -165,23 +187,45 @@ core.register_node("astridmod:program_node", {
                             end
                             prelude = prelude .. "\n" .. fshard_prelude(player)
 
-                            local f = loadstring(prelude ..
-                                                 fields.code)
-                            status, res = pcall(f, ptable)
+                            local prelude_length = select(2, prelude:gsub('\n', '\n'))
 
-                            if status == false then
+                            local f
+                            local err
+                            local errline = nil
+                            local _
+                            f, err = loadstring(prelude ..
+                                                 fields.code)
+                            if f == nil then
                                meta:set_string("error", "true")
-                               core.chat_send_player(player:get_player_name(), res)
-                            else
-                               meta:set_string("error", "false")
+                               _,_,errline = err:find("^.*:(%d+):.*$")
+                               errline = tonumber(errline) - prelude_length
+                               err = err:gsub("^(.*:)%d+(:.*)$", "%1" .. errline .. "%2")
+                               core.chat_send_player(player:get_player_name(), err)
+                           else
+                               local status, err = pcall(f, ptable)
+                               if status == false then
+                                  meta:set_string("error", "true")
+                                  _,_,errline = err:find("^.*:(%d+):.*$")
+                                  errline = tonumber(errline) - prelude_length
+                                  err = err:gsub("^(.*:)%d+(:.*)$", "%1" .. errline .. "%2")
+                                  core.chat_send_player(player:get_player_name(), err)
+                               else
+                                  meta:set_string("error", "false")
+                               end
                             end
                             meta:set_string("code", fields.code)
-                            meta:set_string("formspec", program_node_formspec(fields.code, meta:get_string("error")))
+                            meta:set_string("formspec", program_node_formspec(fields.code,
+                                                                              meta:get_string("error"),
+                                                                              errline
+                            ))
                          end
                          if fields.save then
                             local meta = core.get_meta(pos)
                             meta:set_string("code", fields.code)
-                            meta:set_string("formspec", program_node_formspec(fields.code, meta:get_string("error")))
+                            meta:set_string("formspec", program_node_formspec(fields.code,
+                                                                              meta:get_string("error"),
+                                                                              nil
+                            ))
                          end
                       end
 })
