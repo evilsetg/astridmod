@@ -31,7 +31,7 @@ convenience.nodetable = {
    ofen = "mcl_furnaces:furnace",
    bett = "mcl_beds:bed",
    -- colors
-   weiß = "mcl_wool:white",
+   weiss = "mcl_wool:white",
    hellgrau = "mcl_wool:silver",
    grau = "mcl_wool:gray",
    schwarz = "mcl_wool:black",
