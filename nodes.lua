@@ -120,6 +120,12 @@ core.register_node("astridmod:program_node", {
                             local node = core.get_node(pos)
                             local y = vector.new(0,1,0)
 
+                            local twasistda = r_decorator(
+                               function(tpos)
+                                  local dasistda = core.get_node_or_nil(tpos)
+                                  core.chat_send_player(player:get_player_name(), dasistda.name)
+                               end, pos, node.param2)
+
                             local istdasda = r_decorator(
                                function(tpos, name)
                                   local test_node = core.get_node(tpos)
@@ -128,7 +134,7 @@ core.register_node("astridmod:program_node", {
                                   else
                                      convenience.baue(pos+y,rot)
                                   end
-                               end, pos, param2)
+                               end, pos, node.param2)
 
                             local ptable = { pos = pos,
                                              player = player,
@@ -141,7 +147,7 @@ core.register_node("astridmod:program_node", {
                                              raetsel = raetsel,
                                              direction=node.param2,
                                              wasistda = r_decorator(convenience.wasistda, pos, node.param2),
-                                             twasistda = r_decorator(convenience.twasistda, pos, node.param2),
+                                             twasistda = twasistda,
                                              istdasda = istdasda
                                              }
 
