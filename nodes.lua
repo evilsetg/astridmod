@@ -1,5 +1,10 @@
--- nodes
+-- imports
 local modpath = core.get_modpath(core.get_current_modname())
+player_code = dofile(modpath .. "/player_code.lua")
+convenience = dofile(modpath.."/convenience.lua") -- load convenience bindings
+raetsel = dofile(modpath.."/raetsel.lua") -- load riddles
+
+-- nodes
 -- formspec for program_node
 local function style_errline(code, errline)
    if errline == nil then
@@ -19,7 +24,7 @@ local function style_errline(code, errline)
       (code:sub(last_offset+1, last_offset+errstring:len()) == errstring and
        "" or
        errstring)  ..
-            code:sub(last_offset+1,code:len())
+      code:sub(last_offset+1,code:len())
 end
 
 local function program_node_formspec(code, is_error, errline)
@@ -39,45 +44,6 @@ local function program_node_formspec(code, is_error, errline)
       style_errline(core.formspec_escape(code), errline) .."]" ..
       "button[1,22;20,2;enter;Ausführen!]"
    return formspec
-end
-
--- include function_shards in player inventory into program_block prelude
-function fshard_prelude(player)
-   local inv = player:get_inventory()
-   local main_inv = inv:get_list("main")
-   local acc = ""
-   for i = 1,9 do -- check in hotbar slots
-      local stack = main_inv[i]
-      if stack:get_name() == "astridmod:function_shard" then
-         acc = acc .. stack:get_meta():get_string("text") .. "\n"
-      end
-   end
-   return acc
-end
-
--- convenience functions for program_node
-convenience = dofile(modpath.."/convenience.lua") -- load convenience bindings
-raetsel = dofile(modpath.."/raetsel.lua") -- load riddles
-
-local static_prelude = "local nv = vector.new(0,0,0)\n" ..
-   "local x = vector.new(1,0,0)\n" ..
-   "local y = vector.new(0,1,0)\n" ..
-   "local z = vector.new(0,0,1)\n"
-
-for k,v in pairs(convenience.nodetable) do
-   static_prelude = static_prelude ..
-      "local " .. k .. " = \"" .. v .. "\"\n"
-end
-
-local y = vector.new(0,1,0)
--- r_decorator transform a function(pos) into
--- function(offset) with offset from program_node
-local function r_decorator(f,pos,param2)
-   return function(...)
-      local tab = {...}
-      tab[1] = pos + tab[1]:rotate_around_axis(-y, param2*math.pi/2)
-      return f(unpack(tab))
-   end
 end
 
 -- program node
@@ -115,118 +81,28 @@ core.register_node("astridmod:program_node", {
                          if fields.quit then
                             return
                          end
+                         local meta = core.get_meta(pos)
+                         local errline
                          if fields.enter then
-                            local meta = core.get_meta(pos)
-                            local node = core.get_node(pos)
-                            local y = vector.new(0,1,0)
-
-                            local twasistda = r_decorator(
-                               function(tpos)
-                                  local dasistda = core.get_node_or_nil(tpos)
-                                  core.chat_send_player(player:get_player_name(), dasistda.name)
-                               end, pos, node.param2)
-
-                            local istdasda = r_decorator(
-                               function(tpos, name)
-                                  local test_node = core.get_node(tpos)
-                                  if (test_node.name == name) then
-                                     convenience.baue(pos+y,gruen)
-                                  else
-                                     convenience.baue(pos+y,rot)
-                                  end
-                               end, pos, node.param2)
-
-                            local ptable = { pos = pos,
-                                             player = player,
-                                             baue = convenience.baue,
-                                             entferne = convenience.entferne,
-                                             schreibe = convenience.entferne,
-                                             block = convenience.block,
-                                             rotiere = convenience.rotiere,
-                                             rbaue = r_decorator(convenience.baue, pos, node.param2),
-                                             raetsel = raetsel,
-                                             direction=node.param2,
-                                             wasistda = r_decorator(convenience.wasistda, pos, node.param2),
-                                             twasistda = twasistda,
-                                             istdasda = istdasda
-                                             }
-
-                            local prelude = static_prelude ..
-                               "local ptable = ...\n"
-                            for k,_ in pairs(ptable) do
-                               prelude = prelude ..
-                                  "local " .. k .. " = " .. "ptable." .. k .. "\n"
-                            end
-                            prelude = prelude .. "\n" .. fshard_prelude(player)
-
-                            local prelude_length = select(2, prelude:gsub('\n', '\n'))
-
-                            local f
                             local err
-                            local errline = nil
-                            local _
-                            f, err = loadstring(prelude ..
-                                                 fields.code)
-                            if f == nil then
+                            local node = core.get_node(pos)
+                            err, errline = player_code.eval_player_code(fields.code, player, pos, node.param2)
+                            if (err ~= nil) then
                                meta:set_string("error", "true")
-                               _,_,errline = err:find("^.*:(%d+):.*$")
-                               errline = tonumber(errline) - prelude_length
-                               err = err:gsub("^(.*:)%d+(:.*)$", "%1" .. errline .. "%2")
-                               core.chat_send_player(player:get_player_name(), err)
-                           else
-                               local status, err = pcall(f, ptable)
-                               if status == false then
-                                  meta:set_string("error", "true")
-                                  _,_,errline = err:find("^.*:(%d+):.*$")
-                                  errline = tonumber(errline) - prelude_length
-                                  err = err:gsub("^(.*:)%d+(:.*)$", "%1" .. errline .. "%2")
-                                  core.chat_send_player(player:get_player_name(), err)
-                               else
-                                  meta:set_string("error", "false")
-                               end
+                               meta:set_string("errmsg", err)
+                            else
+                               meta:set_string("error", "false")
+                               meta:set_string("errmsg", "")
                             end
-                            meta:set_string("code", fields.code)
-                            meta:set_string("formspec", program_node_formspec(fields.code,
-                                                                              meta:get_string("error"),
-                                                                              errline
-                            ))
                          end
-                         if fields.save then
-                            local meta = core.get_meta(pos)
+                         if fields.save or fields.enter then
                             meta:set_string("code", fields.code)
-                            meta:set_string("formspec", program_node_formspec(fields.code,
-                                                                              meta:get_string("error"),
-                                                                              nil
-                            ))
+                            meta:set_string("formspec",
+                                            program_node_formspec(fields.code,
+                                                                  meta:get_string("error"),
+                                                                  errline))
                          end
                       end
-})
-
-core.register_node("astridmod:emperor_node", {
-                      description = "Hail the emperor",
-                      tiles = {"astridmod_emperor_node.png"},
-                      groups = {cracky = 3},
-                      after_place_node = function(pos, placer, itemstack, pointed_thing)
-                         if placer and placer:is_player() then
-                            local meta = core.get_meta(pos)
-                            meta:set_string("owner", placer:get_player_name())
-                         end
-                      end,
-                      on_rightclick = function(pos, node, clicker, itemstack, pointed_thing)
-                         core.chat_send_player(clicker:get_player_name(), "Hail the Emperor!")
-                         core.sound_play("astridmod_argenta")
-                      end,
-                      on_dig = function(pos, node, digger)
-                         core.sound_play("astridmod_pain")
-                         core.node_dig(pos, node, digger)
-                      end
-
-})
-
-core.register_node("astridmod:virus", {
-                      description = "Eat the world",
-                      tiles = {"astridmod_virus_node.png"},
-                      groups = {fleshy = 30, cracky=3}
 })
 
 -- function shard will inject all code it contains into program node prelude
@@ -240,7 +116,7 @@ local function use_function_shard(itemstack, user, pointed_thing)
       "textarea[1,2;20,20;code;hier:;" ..
       core.formspec_escape(text) .. "]" ..
       "button[1,22;20,2;enter;Speichern!]"
-   core.show_formspec(user:get_player_name(), "function_shard_entry", formspec)
+   core.show_formspec(user:get_player_name(), "astridmod:function_shard_entry", formspec)
 end
 
 core.register_craftitem("astridmod:function_shard", {
@@ -252,7 +128,7 @@ core.register_craftitem("astridmod:function_shard", {
 })
 
 core.register_on_player_receive_fields(function(player, formname, fields)
-      if (formname == "function_shard_entry") then
+      if (formname == "astridmod:function_shard_entry") then
          local stack = player:get_wielded_item()
          if (stack:get_name() == "astridmod:function_shard") then
             local meta = stack:get_meta()
@@ -263,3 +139,69 @@ core.register_on_player_receive_fields(function(player, formname, fields)
          end
       end
 end)
+
+local function wand_write_spell(itemstack, user, pointed_thing)
+   local spell = itemstack:get_meta():get_string("spell")
+   local formspec = "formspec_version[4]" ..
+      "size[25,25]" ..
+      "label[1,1;Bitte Code eingeben!]" ..
+      "button_exit[21.5,0.5;3,1;exit;Schließen]" ..
+      "style[enter;textcolor=green]" ..
+      "textarea[1,2;20,20;code;hier:;" ..
+      core.formspec_escape(spell) .. "]" ..
+      "button[1,22;20,2;enter;Speichern!]"
+   core.show_formspec(user:get_player_name(), "astridmod:codewand_entry", formspec)
+end
+
+core.register_on_player_receive_fields(function(player, formname, fields)
+      if (formname == "astridmod:codewand_entry") then
+         local stack = player:get_wielded_item()
+         if (stack:get_name() == "astridmod:code_wand") then
+            local meta = stack:get_meta()
+            if fields.enter then
+               meta:set_string("spell", fields.code)
+               player:set_wielded_item(stack)
+            end
+         end
+      end
+end)
+
+function rad_to_param2(rad)
+   if rad >= math.pi then
+      mrad = rad - 2*math.pi
+   else
+      mrad = rad
+   end
+   if (mrad >=  - (math.pi)/4 and mrad < math.pi/4) then
+      return 0
+   elseif (rad >= math.pi/4 and rad < 3*math.pi/4) then
+      return 3
+   elseif (rad >= 3*math.pi/4 and rad < 5*math.pi/4) then
+      return 2
+   else
+      return 1
+   end
+end
+
+
+local function wand_on_use(itemstack, user, pointed_thing)
+   local meta = itemstack:get_meta()
+   local code = meta:get_string("spell")
+   local dir = rad_to_param2(user:get_look_horizontal())
+   local pos
+   if (pointed_thing.type == "node") then
+      pos = pointed_thing.under
+   else
+      pos = user:get_pos()
+   end
+   player_code.eval_player_code(code, user, pos, dir)
+end
+
+
+core.register_tool("astridmod:code_wand", {
+                      description = "Zauberstab",
+                      inventory_image = "astridmod_codewand.png",
+                      on_secondary_use = wand_write_spell,
+                      on_place = wand_write_spell,
+                      on_use = wand_on_use
+})
