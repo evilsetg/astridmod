@@ -1,2 +1,13 @@
-* Astridmod - a Luanti Mod
-The most important addition is a programmable block that is inspired by the mesecons lua controller.
+* Astridmod - a Luanti Mod for in-game programming
+This mod adds nodes and items to facilitate in-game programming and is strongly inspired by the [[https://github.com/minetest-mods/mesecons][mesecons]] lua controller.
+*Be aware that you will probably crash your game with this at some point.*
+
+This mod adds the following nodes and items:
+** programming node
+Allows a player to enter lua code and execute it.
+
+** function floppy
+Functions entered into the function floppy become available to all other items that execute code.
+
+** code wand
+On right click edit the code and on left click execute it.
