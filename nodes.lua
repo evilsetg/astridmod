@@ -166,28 +166,10 @@ core.register_on_player_receive_fields(function(player, formname, fields)
       end
 end)
 
-function rad_to_param2(rad)
-   if rad >= math.pi then
-      mrad = rad - 2*math.pi
-   else
-      mrad = rad
-   end
-   if (mrad >=  - (math.pi)/4 and mrad < math.pi/4) then
-      return 0
-   elseif (rad >= math.pi/4 and rad < 3*math.pi/4) then
-      return 3
-   elseif (rad >= 3*math.pi/4 and rad < 5*math.pi/4) then
-      return 2
-   else
-      return 1
-   end
-end
-
-
 local function wand_on_use(itemstack, user, pointed_thing)
    local meta = itemstack:get_meta()
    local code = meta:get_string("spell")
-   local dir = rad_to_param2(user:get_look_horizontal())
+   local dir = core.dir_to_facedir(user:get_look_dir())
    local pos
    if (pointed_thing.type == "node") then
       pos = pointed_thing.under
